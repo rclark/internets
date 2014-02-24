@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <meta charset='utf-8' />
+    <title>Duplicate Coordinates</title>
+    <link href='//www.mapbox.com/base/latest/base.css' rel='stylesheet' />
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js"></script>
+    <style>
+        .point { cursor: pointer; }
+        .axis text {
+          font: 10px sans-serif;
+        }
+
+        .axis path,
+        .axis line {
+          fill: none;
+          stroke: #000;
+          shape-rendering: crispEdges;
+        }
+
+        .x.axis path {
+          /*display: none;*/
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 60px;
+            width: 300px;
+        }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      <table>
+        <tr>
+          <th>Layer</th>
+          <td id="layer"></td>
+        </tr>
+        <tr>
+          <th>Zoom</th>
+          <td id="zoom"></td>
+        </tr>
+        <tr>
+          <th>Duplicates</th>
+          <td id="duplicates"></td>
+        </tr>
+        <tr>
+          <th>Sample</th>
+          <td id="sample"></td>
+        </tr>
+      </table>
+    </div>
+    <svg class="chart"></svg>
+    <script>
+        // This product includes color specifications and designs developed by Cynthia Brewer (http://colorbrewer.org/).
+        var colorbrewer = {Set3: {
+        12: ["#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f"]
+        }};
+    </script>
+    <script>
+        // Random spattering of tiles across the world, 0-14
+        var data = [
+            [ "0", 9.284297818640706, 1, "water", 2575 ],
+            [ "1", 3.6111962828012922, 4, "water", 451.25 ],
+            [ "2", 1.2960041330194902, 15, "water", 69.53333333333333 ],
+            [ "3", 5.363982233694416, 54, "water", 13.222222222222221 ],
+            [ "4", 7.176496760324876, 162, "water", 7.808641975308642 ],
+            [ "5", 11.022128309057354, 320, "water", 7.059375 ],
+            [ "6", 4.396309816645114, 703, "water", 403.30440967283073 ],
+            [ "7", 2.4235349807554845, 1028, "water", 166.72178988326849 ],
+            [ "8", 2.001864744239281, 1049, "water", 78.49761677788369 ],
+            [ "9", 2.064616809662376, 842, "water", 48.665083135391924 ],
+            [ "10", 3.6781638969141572, 93, "water", 27.13978494623656 ],
+            [ "11", 0.6034424086057675, 10, "water", 11.4 ],
+            [ "12", 5.122139620666254, 45, "water", 4.266666666666667 ],
+            [ "13", 2.4467644857178317, 30, "water", 3.1666666666666665 ],
+            [ "14", 8.469349879966215, 261, "water", 6.222222222222222 ],
+            [ "2", 1.7264822525917736, 9, "admin", 182.11111111111111 ],
+            [ "3", 0.5469872577262352, 23, "admin", 33.56521739130435 ],
+            [ "4", 0.4179362828380171, 56, "admin", 7.946428571428571 ],
+            [ "5", 0.5408263907849808, 98, "admin", 15.316326530612244 ],
+            [ "6", 0.6589751576923033, 127, "admin", 5.771653543307087 ],
+            [ "7", 0.848376519971374, 91, "admin", 2.318681318681319 ],
+            [ "8", 0.552176320692161, 68, "admin", 1.3235294117647058 ],
+            [ "9", 3.146969363130611, 16, "admin", 1 ],
+            [ "12", 0.21573364241280057, 11, "admin", 2.5454545454545454 ],
+            [ "14", 2.5316455696202533, 1, "admin", 2 ],
+            [ "5", 13.114643685170291, 201, "road", 2428.6965174129355 ],
+            [ "6", 8.021303855435168, 521, "road", 510.9846449136276 ],
+            [ "7", 4.513291104211226, 967, "road", 296.86866597724924 ],
+            [ "8", 3.927256894771798, 1038, "road", 152.1974951830443 ],
+            [ "9", 0.35346208781310756, 681, "road", 34.19089574155653 ],
+            [ "10", 0.18368336687808276, 138, "road", 6.1521739130434785 ],
+            [ "11", 0.05877459637060685, 10, "road", 1.6 ],
+            [ "12", 0.04325620184470135, 137, "road", 10.262773722627736 ],
+            [ "13", 0.03391095737820436, 68, "road", 3.7794117647058822 ],
+            [ "14", 0.3544650673231451, 255, "road", 16.058823529411764 ],
+            [ "7", 0.5855021066755282, 580, "landuse", 53.03448275862069 ],
+            [ "8", 0.8547438312670546, 743, "landuse", 33.09017496635263 ],
+            [ "9", 1.2189183241971633, 771, "landuse", 17.525291828793776 ],
+            [ "10", 2.659245998027867, 185, "landuse", 14.313513513513513 ],
+            [ "11", 0.19365331460237814, 20, "landuse", 6.75 ],
+            [ "12", 2.906073131001957, 68, "landuse", 6.176470588235294 ],
+            [ "13", 0.4893440357639792, 17, "landuse", 1.2352941176470589 ],
+            [ "14", 7.391142792092816, 328, "landuse", 46.673780487804876 ],
+            [ "7", 1.3462440375217133, 170, "landuse_overlay", 26.429411764705883 ],
+            [ "8", 0.7341981694841512, 174, "landuse_overlay", 18.367816091954023 ],
+            [ "9", 1.012072199516701, 168, "landuse_overlay", 15.255952380952381 ],
+            [ "13", 5.88235294117647, 1, "landuse_overlay", 1 ],
+            [ "14", 8.08604262687061, 56, "landuse_overlay", 2.0714285714285716 ],
+            [ "8", 0.3404512067233478, 587, "waterway", 12.79045996592845 ],
+            [ "9", 0.23099328011041395, 347, "waterway", 5.642651296829971 ],
+            [ "10", 0.06409061962083566, 91, "waterway", 2.2527472527472527 ],
+            [ "11", 0.10467098952606275, 9, "waterway", 1.1111111111111112 ],
+            [ "12", 0.36730340642217496, 3, "waterway", 1 ],
+            [ "13", 0.40734992469744674, 4, "waterway", 1 ],
+            [ "14", 1.7613197881475249, 9, "waterway", 1 ],
+            [ "10", 1.9129921380317523, 12, "aeroway", 7.083333333333333 ],
+            [ "11", 0.24088775530360573, 3, "aeroway", 4 ],
+            [ "12", 0.0932206760001117, 3, "aeroway", 1.3333333333333333 ],
+            [ "13", 50, 1, "aeroway", 1 ],
+            [ "14", 9.14568101975482, 24, "aeroway", 3.0833333333333335 ],
+            [ "12", 0.058915869570441384, 29, "road_label", 1.206896551724138 ],
+            [ "13", 0.07103262662509341, 9, "road_label", 1.3333333333333333 ],
+            [ "14", 0.26893246619071703, 171, "road_label", 4.239766081871345 ],
+            [ "12", 0.26274333079840567, 12, "tunnel", 2.1666666666666665 ],
+            [ "13", 0.48361043259002445, 2, "tunnel", 3 ],
+            [ "14", 1.3494687131050767, 2, "tunnel", 2.5 ],
+            [ "12", 0.17849848097782098, 29, "bridge", 1.8620689655172413 ],
+            [ "13", 0.12635739088755052, 7, "bridge", 1.4285714285714286 ],
+            [ "14", 1.2800434915161631, 30, "bridge", 4.766666666666667 ],
+            [ "13", 0.057037022076419974, 41, "building", 9.21951219512195 ],
+            [ "14", 11.874479662149797, 332, "building", 2690.003012048193 ],
+            [ "13", 0.29069767441860467, 1, "waterway_label", 1 ],
+            [ "14", 0.8849195403705618, 4, "waterway_label", 1 ],
+            [ "14", 3.875064911368451, 69, "barrier_line", 21.07246376811594 ]
+        ];
+
+        var colors = d3.scale.ordinal()
+            .domain(_(data.map(function(d) { return d[3]; })).uniq())
+            .range(colorbrewer.Set3[12]);
+
+        var margin = {top: 20, right: 30, bottom: 40, left: 40},
+            w = 960 - margin.left - margin.right,
+            h = 600 - margin.top - margin.bottom;
+
+        var x = d3.scale.linear()
+            .domain([ 7, 15 ])
+            .range([0, w]);
+        var y = d3.scale.linear()
+            .domain([-2, 60])
+            .range([h, 0]);
+
+        var xAxis = d3.svg.axis()
+            .scale(x)
+            .orient("bottom")
+            .tickValues([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
+            
+        var yAxis = d3.svg.axis()
+            .scale(y)
+            .orient("left");
+
+        var zoom = d3.behavior.zoom()
+            .y(y)
+            .scaleExtent([1, 10])
+            .center([y(0), y(0)])
+            .on("zoom", zoomed);
+
+        var chart = d3.select(".chart")
+            .attr("width", w + margin.left + margin.right)
+            .attr("height", h + margin.top + margin.bottom)
+          .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+            .call(zoom);
+
+        chart.append("rect")
+            .attr("width", w)
+            .attr("height", h)
+            .attr("fill-opacity", 0);
+
+        chart.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + h + ")")
+            .call(xAxis);
+
+        chart.append("g")
+            .attr("class", "y axis")
+            .call(yAxis);
+
+        chart.selectAll("circle")
+            .data(data)
+            .enter()
+            .append("circle")
+            .classed("point", true)
+            .attr("cx", function(d) { return x(d[0]); })
+            .attr("cy", function(d) { return y(d[1]); })
+            .attr("r", function(d) { return Math.sqrt(d[4]); })
+            .attr("fill", function(d) { return colors(d[3]); })
+            .attr("stroke", function(d) { return d3.rgb(colors(d[3])).darker(); })
+            .on('mouseover', function(d) {  d3.select(this).attr("stroke-width", 4); d3.select('#layer').html(d[3]); d3.select('#zoom').html(d[0]); d3.select('#duplicates').html(d[1].toFixed(2) + '%, ave. ' + Math.round(d[4]) + ' dpt'); d3.select('#sample').html(d[2] + ' tiles');
+            })
+            .on('mouseout', function() { d3.select(this).attr("stroke-width", 1); });
+        
+        function zoomed() {
+          chart.select(".y.axis").call(yAxis);
+          chart.selectAll("circle")
+              .attr("cy", function(d) { return y(d[1]); });
+        }
+    </script>
+  </body>
+</html>

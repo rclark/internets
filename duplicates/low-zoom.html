@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <meta charset='utf-8' />
+    <title>Duplicate Coordinates</title>
+    <link href='//www.mapbox.com/base/latest/base.css' rel='stylesheet' />
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js"></script>
+    <style>
+        .point { cursor: pointer; }
+        .axis text {
+          font: 10px sans-serif;
+        }
+
+        .axis path,
+        .axis line {
+          fill: none;
+          stroke: #000;
+          shape-rendering: crispEdges;
+        }
+
+        .x.axis path {
+          /*display: none;*/
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 60px;
+            width: 300px;
+        }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      <table>
+        <tr>
+          <th>Layer</th>
+          <td id="layer"></td>
+        </tr>
+        <tr>
+          <th>Zoom</th>
+          <td id="zoom"></td>
+        </tr>
+        <tr>
+          <th>Duplicates</th>
+          <td id="duplicates"></td>
+        </tr>
+        <tr>
+          <th>Sample</th>
+          <td id="sample"></td>
+        </tr>
+      </table>
+    </div>
+    <svg class="chart"></svg>
+    <script>
+        // This product includes color specifications and designs developed by Cynthia Brewer (http://colorbrewer.org/).
+        var colorbrewer = {Set3: {
+        12: ["#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f"]
+        }};
+    </script>
+    <script>
+        // Whole world, 0-6 zoom levels
+        var data = [ 
+            [ '0', 9.284297818640706, 1, 'water', 2575 ],
+            [ '1', 3.6111962828012922, 4, 'water', 451.25 ],
+            [ '2', 1.2960041330194902, 15, 'water', 69.53333333333333 ],
+            [ '3', 6.332702845237005, 60, 'water', 12.583333333333334 ],
+            [ '4', 10.394668451665353, 214, 'water', 7.621495327102804 ],
+            [ '5', 16.874102000724992, 805, 'water', 6.28944099378882 ],
+            [ '6', 6.326595839609929, 1626, 'water', 201.62669126691267 ],
+            [ '2', 1.7264822525917733, 9, 'admin', 182.11111111111111 ],
+            [ '3', 0.5442089301848883, 24, 'admin', 32.583333333333336 ],
+            [ '4', 0.41413179258030014, 57, 'admin', 7.9298245614035086 ],
+            [ '5', 0.47122918669911495, 98, 'admin', 10.714285714285714 ],
+            [ '6', 0.6196445866210181, 132, 'admin', 4.356060606060606 ],
+            [ '5', 12.453210896852351, 213, 'road', 1520.7464788732395 ],
+            [ '6', 7.739212601215557, 604, 'road', 375.39403973509934 ] 
+        ];
+
+        var colors = d3.scale.ordinal()
+            .domain(_(data.map(function(d) { return d[3]; })).uniq())
+            .range(colorbrewer.Set3[12]);
+
+        var margin = {top: 20, right: 30, bottom: 40, left: 40},
+            w = 960 - margin.left - margin.right,
+            h = 600 - margin.top - margin.bottom;
+
+        var x = d3.scale.linear()
+            .domain([ 7, 15 ])
+            .range([0, w]);
+        var y = d3.scale.linear()
+            .domain([-2, 60])
+            .range([h, 0]);
+
+        var xAxis = d3.svg.axis()
+            .scale(x)
+            .orient("bottom")
+            .tickValues([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
+            
+        var yAxis = d3.svg.axis()
+            .scale(y)
+            .orient("left");
+
+        var zoom = d3.behavior.zoom()
+            .y(y)
+            .scaleExtent([1, 10])
+            .center([y(0), y(0)])
+            .on("zoom", zoomed);
+
+        var chart = d3.select(".chart")
+            .attr("width", w + margin.left + margin.right)
+            .attr("height", h + margin.top + margin.bottom)
+          .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+            .call(zoom);
+
+        chart.append("rect")
+            .attr("width", w)
+            .attr("height", h)
+            .attr("fill-opacity", 0);
+
+        chart.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + h + ")")
+            .call(xAxis);
+
+        chart.append("g")
+            .attr("class", "y axis")
+            .call(yAxis);
+
+        chart.selectAll("circle")
+            .data(data)
+            .enter()
+            .append("circle")
+            .classed("point", true)
+            .attr("cx", function(d) { return x(d[0]); })
+            .attr("cy", function(d) { return y(d[1]); })
+            .attr("r", function(d) { return Math.sqrt(d[4]); })
+            .attr("fill", function(d) { return colors(d[3]); })
+            .attr("stroke", function(d) { return d3.rgb(colors(d[3])).darker(); })
+            .on('mouseover', function(d) {  d3.select(this).attr("stroke-width", 4); d3.select('#layer').html(d[3]); d3.select('#zoom').html(d[0]); d3.select('#duplicates').html(d[1].toFixed(2) + '%, ave. ' + Math.round(d[4]) + ' dpt'); d3.select('#sample').html(d[2] + ' tiles');
+            })
+            .on('mouseout', function() { d3.select(this).attr("stroke-width", 1); });
+        
+        function zoomed() {
+          chart.select(".y.axis").call(yAxis);
+          chart.selectAll("circle")
+              .attr("cy", function(d) { return y(d[1]); });
+        }
+    </script>
+  </body>
+</html>
