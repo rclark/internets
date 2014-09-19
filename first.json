@@ -1,0 +1,1 @@
+{"tiles": ["https://cardboard-sandbox.s3.amazonaws.com/geologic-map-of-arizona/first/{z}/{x}/{y}.vector.pbf"],"json":{"vector_layers":[{"id":"geologic_map_of_arizona","minzoom":7,"maxzoom":13}]},"bounds":[-114.815223,31.332033,-109.044521,37.003806],"center":[-111.929872,34.167919499999996,7],"minzoom":7,"maxzoom":13,"updated":1411083619378}
